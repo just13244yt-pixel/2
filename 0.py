@@ -35,21 +35,24 @@ def draw_main(stdscr, selected):
     curses.init_pair(1, curses.COLOR_BLUE, curses.COLOR_BLACK)
     title = "JUST OS"
     stdscr.attron(curses.color_pair(1))
-    stdscr.addstr(1, w//2 - len(title)//2, title)
+    stdscr.addstr(max(0, 1), max(0, w//2 - len(title)//2), title[:w-1])
     stdscr.attroff(curses.color_pair(1))
 
     for i, menu in enumerate(menus):
-        x = w//2 - 10
+        x = max(0, w//2 - 10)
         y = 4 + i
+        text = menu["name"][:w-1-x]  # Truncate if too long
+        if y >= h - 2:
+            break  # Don't draw outside screen
         if i == selected:
             stdscr.attron(curses.A_REVERSE)
-            stdscr.addstr(y, x, menu["name"])
+            stdscr.addstr(y, x, text)
             stdscr.attroff(curses.A_REVERSE)
         else:
-            stdscr.addstr(y, x, menu["name"])
+            stdscr.addstr(y, x, text)
 
     hint = "B = Menü hinzufügen | Ctrl+A = Befehl ausführen | ENTER = Start | ESC = Neustart | Q = Beenden"
-    stdscr.addstr(h-2, w-len(hint)-2, hint)
+    stdscr.addstr(max(0, h-2), 0, hint[:w-1])  # Truncate if too long
 
     stdscr.refresh()
 
@@ -59,9 +62,9 @@ def draw_main(stdscr, selected):
 def input_screen(stdscr, prompt):
     stdscr.clear()
     h, w = stdscr.getmaxyx()
-    stdscr.addstr(h//2 - 1, w//2 - len(prompt)//2, prompt)
+    stdscr.addstr(max(0, h//2 - 1), max(0, w//2 - len(prompt)//2), prompt[:w-1])
     curses.echo()
-    raw = stdscr.getstr(h//2 + 1, w//2 - 20, 60)
+    raw = stdscr.getstr(max(0, h//2 + 1), max(0, w//2 - 20), 60)
     value = raw.decode() if raw else ""
     curses.noecho()
     return value.strip()
@@ -132,7 +135,7 @@ def main(stdscr):
                 if cmd:
                     run_command(cmd)
                 else:
-                    stdscr.addstr(0, 0, "Kein Befehl definiert!")
+                    stdscr.addstr(0, 0, "Kein Befehl definiert!"[:stdscr.getmaxyx()[1]-1])
                     stdscr.getch()
 
         elif key in (ord('q'), ord('Q')):

@@ -1,0 +1,109 @@
+import curses
+import subprocess
+import os
+import sys
+import json
+
+MENU_FILE = "menus.json"
+menus = []
+
+def load_menus():
+    global menus
+    if os.path.exists(MENU_FILE):
+        try:
+            with open(MENU_FILE, "r") as f:
+                menus = json.load(f)
+        except:
+            menus = []
+    else:
+        menus = []
+
+def save_menus():
+    with open(MENU_FILE, "w") as f:
+        json.dump(menus, f, indent=4)
+
+def draw_main(stdscr, selected):
+    stdscr.clear()
+    h, w = stdscr.getmaxyx()
+
+    curses.init_pair(1, curses.COLOR_BLUE, curses.COLOR_BLACK)
+    title = "JUST OS"
+    stdscr.attron(curses.color_pair(1))
+    stdscr.addstr(1, w//2 - len(title)//2, title)
+    stdscr.attroff(curses.color_pair(1))
+
+    for i, menu in enumerate(menus):
+        x = w//2 - 10
+        y = 4 + i
+        if i == selected:
+            stdscr.attron(curses.A_REVERSE)
+            stdscr.addstr(y, x, menu["name"])
+            stdscr.attroff(curses.A_REVERSE)
+        else:
+            stdscr.addstr(y, x, menu["name"])
+
+    hint = "B = Menü hinzufügen | Ctrl+A = Befehl ausführen | ENTER = Start | ESC = Neustart"
+    stdscr.addstr(h-2, w-len(hint)-2, hint)
+
+    stdscr.refresh()
+
+def input_screen(stdscr, prompt):
+    stdscr.clear()
+    h, w = stdscr.getmaxyx()
+    stdscr.addstr(h//2 - 1, w//2 - len(prompt)//2, prompt)
+    curses.echo()
+    value = stdscr.getstr(h//2 + 1, w//2 - 20, 60).decode()
+    curses.noecho()
+    return value
+
+def restart_justos():
+    curses.endwin()
+    os.execv(sys.executable, [sys.executable] + sys.argv)
+
+def run_command(cmd):
+    curses.endwin()
+    try:
+        subprocess.run(cmd, shell=True)
+    except Exception as e:
+        print("Fehler beim Ausführen:", e)
+    input("ENTER drücken um zurückzukehren...")
+
+def main(stdscr):
+    curses.curs_set(0)
+    curses.start_color()
+    selected = 0
+
+    while True:
+        draw_main(stdscr, selected)
+        key = stdscr.getch()
+
+        if key == 27:  # ESC
+            restart_justos()
+
+        elif key == curses.KEY_UP and menus:
+            selected = (selected - 1) % len(menus)
+
+        elif key == curses.KEY_DOWN and menus:
+            selected = (selected + 1) % len(menus)
+
+        elif key in (ord('b'), ord('B')):
+            # Menüeintrag hinzufügen
+            name = input_screen(stdscr, "Name eingeben")
+            cmd = input_screen(stdscr, "Befehl eingeben")
+            menus.append({"name": name, "cmd": cmd})
+            save_menus()
+
+        elif key == 1:  # Ctrl+A
+            # Direkt Befehl ausführen
+            cmd = input_screen(stdscr, "Befehl ausführen")
+            run_command(cmd)
+
+        elif key in (curses.KEY_ENTER, 10, 13):
+            if menus:
+                run_command(menus[selected]["cmd"])
+
+        elif key in (ord('q'), ord('Q')):
+            restart_justos()
+
+load_menus()
+curses.wrapper(main)
